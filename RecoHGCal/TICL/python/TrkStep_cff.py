@@ -11,7 +11,7 @@ from RecoHGCal.TICL.multiClustersFromTrackstersProducer_cfi import multiClusters
 filteredLayerClustersTrk = _filteredLayerClustersProducer.clone(
   clusterFilter = "ClusterFilterByAlgo",
   algo_number = 8,
-  iteration_label = "Trk"
+  iteration_label = "TRK"
 )
 
 # CA - PATTERN RECOGNITION
@@ -42,4 +42,32 @@ ticlTrkStepTask = cms.Task(ticlSeedingTrk
     ,filteredLayerClustersTrk
     ,ticlTrackstersTrk
     ,ticlMultiClustersFromTrackstersTrk)
+    
+    
+# HFNose
+
+filteredLayerClustersTrkHFNose = filteredLayerClustersTrk.clone(
+    LayerClusters = 'hgcalLayerClustersHFNose',
+    LayerClustersInputMask = cms.InputTag("hgcalLayerClustersHFNose","InitialLayerClustersMask"),
+    iteration_label = "TRKn",
+    algo_number = 9
+#no tracking mask for EM for now
+)
+
+ticlTrackstersTrkHFNose = ticlTrackstersTrk.clone(
+    detector = "HFNose",
+    layer_clusters = "hgcalLayerClustersHFNose",
+    layer_clusters_hfnose_tiles = "ticlLayerTileHFNose",
+    original_mask = cms.InputTag("hgcalLayerClustersHFNose","InitialLayerClustersMask"),
+    filtered_mask = cms.InputTag("filteredLayerClustersHFNoseEM","EMn"),
+    seeding_regions = "ticlSeedingTrkHFNose",
+    time_layerclusters = cms.InputTag("hgcalLayerClustersHFNose","timeLayerCluster"),
+    min_clusters_per_ntuplet = 6,
+    itername = "TRKn"
+)
+
+ticlHFNoseTrkStepTask = cms.Task(ticlSeedingGlobalHFNose
+                              ,filteredLayerClustersTrkHFNose
+                              ,ticlTrackstersTrkHFNose
+)
 

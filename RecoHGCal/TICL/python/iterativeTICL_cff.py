@@ -44,7 +44,8 @@ ticlLayerTileHFNoseTask = cms.Task(ticlLayerTileHFNose)
 iterHFNoseTICLTask = cms.Task(
     ticlLayerTileHFNoseTask,
     ticlHFNoseMIPStepTask,
-    ticlHFNoseEMStepTask
+    ticlHFNoseEMStepTask,
+    ticlHFNoseTrkStepTask
 )
 
 def injectTICLintoPF(process):
