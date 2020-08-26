@@ -48,7 +48,7 @@ def TICL_iterations_withReco(process):
   )
 
   process.multiClustersFromTrackstersTrk = multiClustersFromTrackstersProducer.clone(
-      label = "TrkMultiClustersFromTracksterByCA",
+      # label = "TrkMultiClustersFromTracksterByCA",  # label has been removed from plugin
       Tracksters = "trackstersTrk"
   )
 
@@ -74,7 +74,7 @@ def TICL_iterations_withReco(process):
   )
 
   process.multiClustersFromTrackstersMIP = multiClustersFromTrackstersProducer.clone(
-      label = "MIPMultiClustersFromTracksterByCA",
+      # label = "MIPMultiClustersFromTracksterByCA",
       Tracksters = "trackstersMIP"
   )
 
@@ -179,7 +179,7 @@ def TICL_iterations(process):
   )
 
   process.multiClustersFromTrackstersMIP = multiClustersFromTrackstersProducer.clone(
-      label = "MIPMultiClustersFromTracksterByCA",
+      # label = "MIPMultiClustersFromTracksterByCA",
       Tracksters = "trackstersMIP"
   )
 
