@@ -40,14 +40,14 @@ ticlMIPStepTask = cms.Task(ticlSeedingGlobal
     ,ticlTrackstersMIP
     ,ticlMultiClustersFromTrackstersMIP)
 
-filteredLayerClustersHFNoseMIP = filteredLayerClustersMIP.clone(
+filteredLayerClustersMIPHFNose = filteredLayerClustersMIP.clone(
     LayerClusters = 'hgcalLayerClustersHFNose',
     LayerClustersInputMask = cms.InputTag("hgcalLayerClustersHFNose","InitialLayerClustersMask"),
     iteration_label = "MIPn",
     algo_number = 9
 )
 
-ticlTrackstersHFNoseMIP = ticlTrackstersMIP.clone(
+ticlTrackstersMIPHFNose = ticlTrackstersMIP.clone(
     detector = "HFNose",
     layer_clusters = "hgcalLayerClustersHFNose",
     layer_clusters_hfnose_tiles = "ticlLayerTileHFNose",
@@ -59,6 +59,6 @@ ticlTrackstersHFNoseMIP = ticlTrackstersMIP.clone(
 )
 
 ticlHFNoseMIPStepTask = cms.Task(ticlSeedingGlobalHFNose
-                              ,filteredLayerClustersHFNoseMIP
-                              ,ticlTrackstersHFNoseMIP
+                              ,filteredLayerClustersMIPHFNose
+                              ,ticlTrackstersMIPHFNose
 )

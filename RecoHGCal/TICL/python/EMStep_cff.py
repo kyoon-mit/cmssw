@@ -44,7 +44,10 @@ ticlEMStepTask = cms.Task(ticlSeedingGlobal
     ,ticlTrackstersEM
     ,ticlMultiClustersFromTrackstersEM)
 
-filteredLayerClustersHFNoseEM = filteredLayerClustersEM.clone(
+
+# HFNose
+
+filteredLayerClustersEMHFNose = filteredLayerClustersEM.clone(
     LayerClusters = 'hgcalLayerClustersHFNose',
     LayerClustersInputMask = cms.InputTag("hgcalLayerClustersHFNose","InitialLayerClustersMask"),
     iteration_label = "EMn",
@@ -52,7 +55,7 @@ filteredLayerClustersHFNoseEM = filteredLayerClustersEM.clone(
 #no tracking mask for EM for now
 )
 
-ticlTrackstersHFNoseEM = ticlTrackstersEM.clone(
+ticlTrackstersEMHFNose = ticlTrackstersEM.clone(
     detector = "HFNose",
     layer_clusters = "hgcalLayerClustersHFNose",
     layer_clusters_hfnose_tiles = "ticlLayerTileHFNose",
@@ -60,10 +63,13 @@ ticlTrackstersHFNoseEM = ticlTrackstersEM.clone(
     filtered_mask = cms.InputTag("filteredLayerClustersHFNoseEM","EMn"),
     seeding_regions = "ticlSeedingGlobalHFNose",
     time_layerclusters = cms.InputTag("hgcalLayerClustersHFNose","timeLayerCluster"),
-    min_clusters_per_ntuplet = 6
+    pid_threshold = 0.0,
+    missing_layers = 1,
+    min_clusters_per_ntuplet = 6,
+    itername = "EMn"
 )
 
 ticlHFNoseEMStepTask = cms.Task(ticlSeedingGlobalHFNose
-                              ,filteredLayerClustersHFNoseEM
-                              ,ticlTrackstersHFNoseEM
+                              ,filteredLayerClustersEMHFNose
+                              ,ticlTrackstersEMHFNose
 )

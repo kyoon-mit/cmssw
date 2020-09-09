@@ -22,6 +22,7 @@ TICL_RECO = cms.PSet(
       'keep *_ticlTrackstersMerge_*_*',
       'keep *_ticlCandidateFromTracksters_*_*',
       'keep *_ticlTrackstersHFNoseEM_*_*',
+      'keep *_ticlTrackstersHFNoseTrk_',
       'keep *_ticlTrackstersHFNoseMIP_*_*',
       'keep *_ticlTrackstersHFNoseMerge_*_*',
       'keep *_ticlCandidateFromTrackstersHFNose_*_*',
