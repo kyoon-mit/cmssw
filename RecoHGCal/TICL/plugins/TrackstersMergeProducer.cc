@@ -146,7 +146,8 @@ void TrackstersMergeProducer::dumpTrackster(const Trackster &t) const {
 }
 
 void TrackstersMergeProducer::produce(edm::Event &evt, const edm::EventSetup &es) {
-  edm::ESHandle<CaloGeometry> geom = es.getHandle(geometry_token_);
+  edm::ESHandle<CaloGeometry> geom;
+  es.get<CaloGeometryRecord>().get(geom);
   rhtools_.setGeometry(*geom);
   auto result = std::make_unique<std::vector<Trackster>>();
   auto mergedTrackstersTRK = std::make_unique<std::vector<Trackster>>();
