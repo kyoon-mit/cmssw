@@ -42,6 +42,35 @@ ticlTrkStepTask = cms.Task(ticlSeedingTrk
     ,filteredLayerClustersTrk
     ,ticlTrackstersTrk
     ,ticlMultiClustersFromTrackstersTrk)
+    
+    
+## HFNose
+
+filteredLayerClustersTrkHFNose = filteredLayerClustersTrk.clone(
+    LayerClusters = 'hgcalLayerClustersHFNose',
+    LayerClustersInputMask = cms.InputTag("hgcalLayerClustersHFNose","InitialLayerClustersMask"),
+    iteration_label = "Trkn",
+    algo_number = 9
+)
+
+ticlTrackstersTrkHFNose = ticlTrackstersTrk.clone(
+    detector = "HFNose",
+    layer_clusters = "hgcalLayerClustersHFNose",
+    layer_clusters_hfnose_tiles = "ticlLayerTileHFNose",
+    original_mask = cms.InputTag("hgcalLayerClustersHFNose","InitialLayerClustersMask"),
+    filtered_mask = cms.InputTag("filteredLayerClustersTrkHFNose","Trkn"),
+    seeding_regions = "ticlSeedingTrkHFNose",
+    time_layerclusters = cms.InputTag("hgcalLayerClustersHFNose","timeLayerCluster"),
+    min_clusters_per_ntuplet = 6,
+    missing_layers = 1,
+    pid_threshold = 0.0,
+    itername = "TRKn"
+)
+
+ticlHFNoseTrkStepTask = cms.Task(ticlSeedingTrkHFNose
+                              ,filteredLayerClustersTrkHFNose
+                              ,ticlTrackstersTrkHFNose
+)
 
 
 ## HFNose

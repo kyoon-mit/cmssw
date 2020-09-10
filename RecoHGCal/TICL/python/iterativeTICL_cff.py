@@ -46,6 +46,8 @@ iterHFNoseTICLTask = cms.Task(
     ticlHFNoseMIPStepTask,
     ticlHFNoseTrkStepTask,
     ticlHFNoseEMStepTask
+    ticlHFNoseEMStepTask,
+    ticlHFNoseTrkStepTask
 )
 
 def injectTICLintoPF(process):
