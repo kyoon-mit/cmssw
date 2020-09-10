@@ -15,3 +15,11 @@ ticlSeedingTrk = _ticlSeedingRegionProducer.clone(
 ticlSeedingGlobalHFNose = _ticlSeedingRegionProducer.clone(
   algoId = 2
 )
+
+ticlSeedingTrkHFNose = _ticlSeedingRegionProducer.clone(
+  algoId = 1,
+  algo_verbosity = 1,
+  tracks = "generalTracks", # need to change?
+  cutTk =  "3.0 < abs(eta) < 4.2" # && pt > 1. && quality(\"highPurity\") &&"
+           # "hitPattern().numberOfLostHits(\"MISSING_OUTER_HITS\") < 10"
+)
