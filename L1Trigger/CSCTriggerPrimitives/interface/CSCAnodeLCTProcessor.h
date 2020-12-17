@@ -39,6 +39,7 @@
 #include "DataFormats/CSCDigi/interface/CSCALCTPreTriggerDigi.h"
 #include "CondFormats/CSCObjects/interface/CSCDBL1TPParameters.h"
 #include "L1Trigger/CSCTriggerPrimitives/interface/CSCBaseboard.h"
+#include "L1Trigger/CSCTriggerPrimitives/interface/LCTQualityControl.h"
 
 #include <vector>
 
@@ -54,6 +55,9 @@ public:
 
   /** Default constructor. Used for testing. */
   CSCAnodeLCTProcessor();
+
+  /** Default destructor. */
+  ~CSCAnodeLCTProcessor() override = default;
 
   /** Sets configuration parameters obtained via EventSetup mechanism. */
   void setConfigParameters(const CSCDBL1TPParameters* conf);
@@ -128,26 +132,26 @@ protected:
   unsigned int nplanes_hit_pattern, nplanes_hit_accel_pattern;
   unsigned int trig_mode, accel_mode, l1a_window_width;
 
-  /** SLHC: hit persistency length */
+  /** Phase2: hit persistency length */
   unsigned int hit_persist;
 
-  /** SLHC: separate handle for early time bins */
+  /** Phase2: separate handle for early time bins */
   int early_tbins;
 
-  /** SLHC: delta BX time depth for ghostCancellationLogic */
+  /** Phase2: delta BX time depth for ghostCancellationLogic */
   int ghost_cancellation_bx_depth;
 
-  /** SLHC: whether to consider ALCT candidates' qualities
+  /** Phase2: whether to consider ALCT candidates' qualities
       while doing ghostCancellationLogic on +-1 wire groups */
   bool ghost_cancellation_side_quality;
 
-  /** SLHC: deadtime clocks after pretrigger (extra in addition to drift_delay) */
+  /** Phase2: deadtime clocks after pretrigger (extra in addition to drift_delay) */
   unsigned int pretrig_extra_deadtime;
 
-  /** SLHC: whether to use corrected_bx instead of pretrigger BX */
+  /** Phase2: whether to use corrected_bx instead of pretrigger BX */
   bool use_corrected_bx;
 
-  /** SLHC: whether to use narrow pattern mask for the rings close to the beam */
+  /** Phase2: whether to use narrow pattern mask for the rings close to the beam */
   bool narrow_mask_r1;
 
   /** Default values of configuration parameters. */
@@ -158,6 +162,9 @@ protected:
   static const unsigned int def_nplanes_hit_accel_pattern;
   static const unsigned int def_trig_mode, def_accel_mode;
   static const unsigned int def_l1a_window_width;
+
+  /* quality control */
+  std::unique_ptr<LCTQualityControl> qualityControl_;
 
   /** Chosen pattern mask. */
   CSCPatternBank::LCTPatterns alct_pattern_ = {};
@@ -240,10 +247,6 @@ protected:
 
   /** Dump digis on wire groups. */
   void dumpDigis(const std::vector<int> wire[CSCConstants::NUM_LAYERS][CSCConstants::MAX_NUM_WIRES]) const;
-
-  // Check if the ALCT is valid
-  void checkValidReadout(const CSCALCTDigi& alct) const;
-  void checkValid(const CSCALCTDigi& alct, unsigned max_stubs = CSCConstants::MAX_ALCTS_PER_PROCESSOR) const;
 
   void showPatterns(const int key_wire);
 };

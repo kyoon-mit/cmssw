@@ -1,5 +1,4 @@
 #include "L1Trigger/CSCTriggerPrimitives/interface/CSCAnodeLCTProcessor.h"
-#include "L1Trigger/CSCTriggerPrimitives/interface/CSCLCTTools.h"
 #include <set>
 
 // Default values of configuration parameters.
@@ -63,8 +62,7 @@ CSCAnodeLCTProcessor::CSCAnodeLCTProcessor(unsigned endcap,
 
   // Check and print configuration parameters.
   checkConfigParameters();
-  if ((infoV > 0 || (isSLHC_)) && !config_dumped) {
-    //std::cout<<"**** ALCT constructor parameters dump ****"<<std::endl;
+  if ((infoV > 0 || (runPhase2_)) && !config_dumped) {
     dumpConfigParams();
     config_dumped = true;
   }
@@ -74,12 +72,15 @@ CSCAnodeLCTProcessor::CSCAnodeLCTProcessor(unsigned endcap,
 
   // whether to calculate bx as corrected_bx instead of pretrigger one
   use_corrected_bx = false;
-  if (isSLHC_) {
+  if (runPhase2_) {
     use_corrected_bx = alctParams_.getParameter<bool>("alctUseCorrectedBx");
   }
 
   // Load appropriate pattern mask.
   loadPatternMask();
+
+  // quality control of stubs
+  qualityControl_ = std::make_unique<LCTQualityControl>(endcap, station, sector, subsector, chamber, conf);
 }
 
 CSCAnodeLCTProcessor::CSCAnodeLCTProcessor() : CSCBaseboard() {
@@ -95,7 +96,6 @@ CSCAnodeLCTProcessor::CSCAnodeLCTProcessor() : CSCBaseboard() {
   // Check and print configuration parameters.
   checkConfigParameters();
   if (!config_dumped) {
-    //std::cout<<"**** ALCT default constructor parameters dump ****"<<std::endl;
     dumpConfigParams();
     config_dumped = true;
   }
@@ -148,7 +148,6 @@ void CSCAnodeLCTProcessor::setConfigParameters(const CSCDBL1TPParameters* conf) 
   // Check and print configuration parameters.
   checkConfigParameters();
   if (!config_dumped) {
-    //std::cout<<"**** ALCT setConfigParam parameters dump ****"<<std::endl;
     dumpConfigParams();
     config_dumped = true;
   }
@@ -191,8 +190,6 @@ void CSCAnodeLCTProcessor::checkConfigParameters() {
 }
 
 void CSCAnodeLCTProcessor::clear() {
-  ALCTContainer_.clear();
-  ALCTContainer_.resize(CSCConstants::MAX_ALCT_TBINS);
   for (int bx = 0; bx < CSCConstants::MAX_ALCT_TBINS; bx++) {
     bestALCT[bx].clear();
     secondALCT[bx].clear();
@@ -212,8 +209,7 @@ void CSCAnodeLCTProcessor::clear(const int wire, const int pattern) {
 
 std::vector<CSCALCTDigi> CSCAnodeLCTProcessor::run(const CSCWireDigiCollection* wiredc) {
   static std::atomic<bool> config_dumped{false};
-  if ((infoV > 0 || (isSLHC_)) && !config_dumped) {
-    //std::cout<<"**** ALCT run parameters dump ****"<<std::endl;
+  if ((infoV > 0 || (runPhase2_)) && !config_dumped) {
     dumpConfigParams();
     config_dumped = true;
   }
@@ -241,7 +237,7 @@ std::vector<CSCALCTDigi> CSCAnodeLCTProcessor::run(const CSCWireDigiCollection* 
     }
   }
 
-  if (numWireGroups <= 0 or (unsigned) numWireGroups > csctp::get_csc_max_wire(theStation, theRing)) {
+  if (numWireGroups <= 0 or (unsigned) numWireGroups > qualityControl_->get_csc_max_wire(theStation, theRing)) {
     edm::LogError("CSCAnodeLCTProcessor|SetupError")
         << "+++ " << theCSCName_ << " (sector " << theSector << " subsector " << theSubsector << " trig id. "
         << theTrigChamber << "):"
@@ -290,7 +286,7 @@ void CSCAnodeLCTProcessor::run(const std::vector<int> wire[CSCConstants::NUM_LAY
   bool chamber_empty = pulseExtension(wire);
 
   // define a new pattern map
-  // for each key half strip, and for each pattern, store the 2D collection of fired comparator digis
+  // for each key half wire, and for each pattern, store the 2D collection of fired wire digis
   std::map<int, std::map<int, CSCALCTDigi::WireContainer>> hits_in_patterns;
   hits_in_patterns.clear();
 
@@ -301,7 +297,7 @@ void CSCAnodeLCTProcessor::run(const std::vector<int> wire[CSCConstants::NUM_LAY
   if (!chamber_empty) {
     for (int i_wire = 0; i_wire < numWireGroups; i_wire++) {
       // extra check to make sure only valid wires are processed
-      const unsigned max_wire = csctp::get_csc_max_wire(theStation, theRing);
+      const unsigned max_wire = qualityControl_->get_csc_max_wire(theStation, theRing);
       if (unsigned(i_wire) >= max_wire)
         continue;
 
@@ -330,8 +326,6 @@ void CSCAnodeLCTProcessor::run(const std::vector<int> wire[CSCConstants::NUM_LAY
               setWireContainer(newALCT, hits_in_patterns[i_wire][0]);
 
               lct_list.emplace_back(newALCT);
-              if (valid)
-                ALCTContainer_.at(bx).push_back(newALCT);
               if (infoV > 1)
                 LogTrace("CSCAnodeLCTProcessor") << "Add one ALCT to list " << lct_list.back();
             }
@@ -346,8 +340,6 @@ void CSCAnodeLCTProcessor::run(const std::vector<int> wire[CSCConstants::NUM_LAY
               setWireContainer(newALCT, hits_in_patterns[i_wire][1]);
 
               lct_list.emplace_back(newALCT);
-              if (valid)
-                ALCTContainer_.at(bx).push_back(newALCT);
               if (infoV > 1)
                 LogTrace("CSCAnodeLCTProcessor") << "Add one ALCT to list " << lct_list.back();
             }
@@ -940,7 +932,7 @@ void CSCAnodeLCTProcessor::lctSearch() {
       bestALCT[bx].setTrknmb(1);
 
       // check if the best ALCT is valid
-      checkValidReadout(bestALCT[bx]);
+      qualityControl_->checkValidReadout(bestALCT[bx]);
 
       if (infoV > 0) {
         LogDebug("CSCAnodeLCTProcessor") << bestALCT[bx] << " fullBX = " << bestALCT[bx].getFullBX() << " found in "
@@ -952,31 +944,12 @@ void CSCAnodeLCTProcessor::lctSearch() {
         secondALCT[bx].setTrknmb(2);
 
         // check if the second best ALCT is valid
-        checkValidReadout(secondALCT[bx]);
+        qualityControl_->checkValidReadout(secondALCT[bx]);
 
         if (infoV > 0) {
           LogDebug("CSCAnodeLCTProcessor")
               << secondALCT[bx] << " fullBX = " << secondALCT[bx].getFullBX() << " found in " << theCSCName_
               << " (sector " << theSector << " subsector " << theSubsector << " trig id. " << theTrigChamber << ")"
-              << "\n";
-        }
-      }
-    }
-  }
-
-  // set track number for the other ALCTs
-  for (int bx = 0; bx < CSCConstants::MAX_ALCT_TBINS; bx++) {
-    for (unsigned iALCT = 0; iALCT < ALCTContainer_.at(bx).size(); iALCT++) {
-      if (ALCTContainer_.at(bx).at(iALCT).isValid()) {
-        ALCTContainer_.at(bx).at(iALCT).setTrknmb(iALCT + 1);
-
-        // check if ALCT is valid
-        checkValid(ALCTContainer_.at(bx).at(iALCT));
-
-        if (infoV > 0) {
-          LogDebug("CSCAnodeLCTProcessor")
-              << ALCTContainer_[bx][iALCT] << " found in " << theCSCName_ << " (sector " << theSector << " subsector "
-              << theSubsector << " trig id. " << theTrigChamber << ")"
               << "\n";
         }
       }
@@ -1226,7 +1199,6 @@ void CSCAnodeLCTProcessor::dumpConfigParams() const {
   strm << " l1a_window_width [L1Accept window width, in 25 ns bins] = " << l1a_window_width << "\n";
   strm << "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n";
   LogDebug("CSCAnodeLCTProcessor") << strm.str();
-  //std::cout<<strm.str()<<std::endl;
 }
 
 // Dump of digis on wire groups.
@@ -1260,65 +1232,6 @@ void CSCAnodeLCTProcessor::dumpDigis(
     }
   }
   LogTrace("CSCAnodeLCTProcessor") << strstrm.str();
-}
-
-// Check if the ALCT is valid
-void CSCAnodeLCTProcessor::checkValidReadout(const CSCALCTDigi& alct) const {
-  checkValid(alct, CSCConstants::MAX_ALCTS_READOUT);
-}
-
-// Check if the ALCT is valid
-void CSCAnodeLCTProcessor::checkValid(const CSCALCTDigi& alct, unsigned max_stubs) const {
-  const unsigned max_wire = csctp::get_csc_max_wire(theStation, theRing);
-  const unsigned max_quality = csctp::get_csc_alct_max_quality(theStation, theRing, runME21ILT_);
-
-  unsigned errors = 0;
-
-  // stub must be valid
-  if (!alct.isValid()) {
-    edm::LogError("CSCAnodeLCTProcessor") << "CSCALCTDigi with invalid bit set: " << alct.isValid();
-    errors++;
-  }
-
-  // ALCT number is 1 or 2
-  if (alct.getTrknmb() < 1 or alct.getTrknmb() > max_stubs) {
-    edm::LogError("CSCAnodeLCTProcessor")
-        << "CSCALCTDigi with invalid track number: " << alct.getTrknmb() << "; allowed [1," << max_stubs << "]";
-    errors++;
-  }
-
-  // ALCT quality must be valid
-  // number of layers - 3
-  if (alct.getQuality() <= 0 or alct.getQuality() > max_quality) {
-    edm::LogError("CSCAnodeLCTProcessor")
-        << "CSCALCTDigi with invalid quality: " << alct.getQuality() << "; allowed [0," << max_quality << "]";
-    errors++;
-  }
-
-  // ALCT key wire-group must be within bounds
-  if (alct.getKeyWG() > max_wire) {
-    edm::LogError("CSCAnodeLCTProcessor")
-        << "CSCALCTDigi with invalid wire-group: " << alct.getKeyWG() << "; allowed [0, " << max_wire << "]";
-    errors++;
-  }
-
-  // ALCT with out-of-time BX
-  if (alct.getBX() > CSCConstants::MAX_ALCT_TBINS - 1) {
-    edm::LogError("CSCAnodeLCTProcessor") << "CSCALCTDigi with invalid BX: " << alct.getBX() << "; allowed [0, "
-                                          << CSCConstants::MAX_LCT_TBINS - 1 << "]";
-    errors++;
-  }
-
-  // ALCT is neither accelerator or collision
-  if (alct.getCollisionB() > 1) {
-    edm::LogError("CSCAnodeLCTProcessor")
-        << "CSCALCTDigi with invalid accel/coll bit: " << alct.getCollisionB() << "; allowed [0,1]";
-    errors++;
-  }
-
-  if (errors > 0) {
-    edm::LogError("CSCAnodeLCTProcessor") << "Faulty ALCT: " << cscId_ << " " << alct << "\n errors " << errors;
-  }
 }
 
 // Returns vector of read-out ALCTs, if any.  Starts with the vector of
@@ -1389,8 +1302,9 @@ std::vector<CSCALCTDigi> CSCAnodeLCTProcessor::readoutALCTs(int nMaxALCTs) const
   }
 
   // do a final check on the ALCTs in readout
+  qualityControl_->checkMultiplicityBX(tmpV);
   for (const auto& alct : tmpV) {
-    checkValid(alct, nMaxALCTs);
+    qualityControl_->checkValid(alct, nMaxALCTs);
   }
 
   return tmpV;
@@ -1400,18 +1314,10 @@ std::vector<CSCALCTDigi> CSCAnodeLCTProcessor::readoutALCTs(int nMaxALCTs) const
 std::vector<CSCALCTDigi> CSCAnodeLCTProcessor::getALCTs(unsigned nMaxALCTs) const {
   std::vector<CSCALCTDigi> tmpV;
   for (int bx = 0; bx < CSCConstants::MAX_ALCT_TBINS; bx++) {
-    if (nMaxALCTs == CSCConstants::MAX_ALCTS_READOUT) {
-      if (bestALCT[bx].isValid())
-        tmpV.push_back(bestALCT[bx]);
-      if (secondALCT[bx].isValid())
-        tmpV.push_back(secondALCT[bx]);
-    } else {
-      for (unsigned iALCT = 0; iALCT < ALCTContainer_.at(bx).size(); iALCT++) {
-        if (iALCT < nMaxALCTs and ALCTContainer_.at(bx).at(iALCT).isValid()) {
-          tmpV.push_back(ALCTContainer_.at(bx).at(iALCT));
-        }
-      }
-    }
+    if (bestALCT[bx].isValid())
+      tmpV.push_back(bestALCT[bx]);
+    if (secondALCT[bx].isValid())
+      tmpV.push_back(secondALCT[bx]);
   }
   return tmpV;
 }

@@ -38,6 +38,7 @@
     <Include ref='Geometry/TrackerSimData/data/PhaseII/TiltedTracker404/trackersens.xml'/>
     <Include ref='Geometry/TrackerSimData/data/PhaseII/TiltedTracker404/pixelsens.xml'/>
     <Include ref='Geometry/TrackerRecoData/data/PhaseII/TiltedTracker613_MB_2019_04/trackerRecoMaterial.xml'/>
+    <Include ref='SimTracker/TrackerMaterialAnalysis/data/trackingMaterialGroups_ForPhaseII.xml'/>
     <Include ref='Geometry/TrackerSimData/data/PhaseII/TiltedTracker404/trackerProdCuts.xml'/>
     <Include ref='Geometry/TrackerSimData/data/PhaseII/TiltedTracker404/pixelProdCuts.xml'/>
     <Include ref='Geometry/TrackerSimData/data/trackerProdCutsBEAM.xml'/>
@@ -76,8 +77,8 @@
     <Include ref='Geometry/MuonCommonData/data/mb4/2015/v2/mb4.xml'/>
     <Include ref='Geometry/MuonCommonData/data/mb4Shield/2021/v1/mb4Shield.xml'/>
     <Include ref='Geometry/MuonCommonData/data/muonYoke/2021/v2/muonYoke.xml'/>
-    <Include ref='Geometry/MuonCommonData/data/csc/2021/v1/csc.xml'/>
     <Include ref='Geometry/MuonCommonData/data/mf/2026/v2/mf.xml'/>
+    <Include ref='Geometry/MuonCommonData/data/csc/2021/v1/csc.xml'/>
     <Include ref='Geometry/MuonCommonData/data/rpcf/2026/v2/rpcf.xml'/>
     <Include ref='Geometry/MuonCommonData/data/gemf/TDR_BaseLine/gemf.xml'/>
     <Include ref='Geometry/MuonCommonData/data/gem11/TDR_BaseLine/gem11.xml'/>

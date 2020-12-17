@@ -13,7 +13,7 @@ process.RandomNumberGeneratorService.g4SimHits.initialSeed = 9876
 
 process.load('FWCore.MessageService.MessageLogger_cfi')
 if hasattr(process,'MessageLogger'):
-    process.MessageLogger.categories.append('MaterialBudget')
+    process.MessageLogger.MaterialBudget=dict()
 
 process.source = cms.Source("PoolSource",
     noEventSort = cms.untracked.bool(True),
@@ -51,6 +51,12 @@ process.g4SimHits.Watchers = cms.VPSet(cms.PSet(
 #       EtaMaxP      = cms.untracked.double(1.42),
 #       EtaMinP      = cms.untracked.double(2.90),
 #       EtaMaxP      = cms.untracked.double(3.00),
+        EtaLowMin    = cms.untracked.double(0.783),
+        EtaLowMax    = cms.untracked.double(0.870),
+        EtaMidMin    = cms.untracked.double(2.650),
+        EtaMidMax    = cms.untracked.double(2.868),
+        EtaHighMin   = cms.untracked.double(2.868),
+        EtaHighMax   = cms.untracked.double(3.000),
         RMax         = cms.untracked.double(5.0),
         ZMax         = cms.untracked.double(14.0),
         Fromdd4hep   = cms.untracked.bool(False)
