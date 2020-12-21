@@ -1,6 +1,6 @@
 import FWCore.ParameterSet.Config as cms
 
-from RecoHGCal.TICL.TICLSeedingRegions_cff import ticlSeedingTrk
+from RecoHGCal.TICL.TICLSeedingRegions_cff import ticlSeedingTrk, ticlSeedingTrkHFNose
 from RecoHGCal.TICL.trackstersProducer_cfi import trackstersProducer as _trackstersProducer
 from RecoHGCal.TICL.filteredLayerClustersProducer_cfi import filteredLayerClustersProducer as _filteredLayerClustersProducer
 from RecoHGCal.TICL.multiClustersFromTrackstersProducer_cfi import multiClustersFromTrackstersProducer as _multiClustersFromTrackstersProducer
@@ -49,3 +49,29 @@ ticlTrkEMStepTask = cms.Task(ticlSeedingTrk
     ,ticlTrackstersTrkEM
     ,ticlMultiClustersFromTrackstersTrkEM)
 
+
+
+## HFNose
+
+filteredLayerClustersHFNoseTrkEM = filteredLayerClustersTrkEM.clone(
+    LayerClusters = 'hgcalLayerClustersHFNose',
+    LayerClustersInputMask = cms.InputTag("hgcalLayerClustersHFNose","InitialLayerClustersMask"),
+    iteration_label = "TrkEMn",
+    algo_number = 9
+)
+
+ticlTrackstersHFNoseTrkEM = ticlTrackstersTrkEM.clone(
+    detector = "HFNose",
+    layer_clusters = "hgcalLayerClustersHFNose",
+    layer_clusters_hfnose_tiles = "ticlLayerTileHFNose",
+    original_mask = cms.InputTag("hgcalLayerClustersHFNose","InitialLayerClustersMask"),
+    filtered_mask = cms.InputTag("filteredLayerClustersHFNoseTrkEM","Trkn"),
+    seeding_regions = "ticlSeedingTrkHFNose",
+    time_layerclusters = cms.InputTag("hgcalLayerClustersHFNose","timeLayerCluster"),
+    itername = "TrkEMn"
+)
+
+ticlHFNoseTrkEMStepTask = cms.Task(ticlSeedingTrkHFNose
+                                  ,filteredLayerClustersHFNoseTrkEM
+                                  ,ticlTrackstersHFNoseTrkEM
+)

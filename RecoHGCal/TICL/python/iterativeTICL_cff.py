@@ -31,16 +31,16 @@ iterTICLTask = cms.Task(ticlLayerTileTask
     ,ticlPFTask
     )
 
-ticlLayerTileHFNose = ticlLayerTileProducer.clone(
+ticlHFNoseLayerTile = ticlLayerTileProducer.clone(
     detector = 'HFNose'
 )
 
-ticlLayerTileHFNoseTask = cms.Task(ticlLayerTileHFNose)
+ticlHFNoseLayerTileTask = cms.Task(ticlHFNoseLayerTile)
 
-iterHFNoseTICLTask = cms.Task(
-    ticlLayerTileHFNoseTask,
-    ticlHFNoseMIPStepTask,
-    ticlHFNoseEMStepTask
+iterHFNoseTICLTask = cms.Task(ticlHFNoseLayerTileTask
+    ,ticlHFNoseTrkEMStepTask
+    ,ticlHFNoseEMStepTask
+    ,ticlHFNoseTrkStepTask
 )
 
 def injectTICLintoPF(process):
