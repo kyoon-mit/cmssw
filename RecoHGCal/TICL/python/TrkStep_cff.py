@@ -47,7 +47,7 @@ ticlTrkStepTask = cms.Task(ticlSeedingTrk
     ,ticlMultiClustersFromTrackstersTrk)
 
     
-## HFNose
+# HFNose
 
 filteredLayerClustersHFNoseTrk = filteredLayerClustersTrk.clone(
     LayerClusters = 'hgcalLayerClustersHFNose',
@@ -59,7 +59,7 @@ filteredLayerClustersHFNoseTrk = filteredLayerClustersTrk.clone(
 ticlTrackstersHFNoseTrk = ticlTrackstersTrk.clone(
     detector = "HFNose",
     layer_clusters = "hgcalLayerClustersHFNose",
-    layer_clusters_hfnose_tiles = "ticlLayerTilesHFNose",
+    layer_clusters_hfnose_tiles = "ticlLayerTileHFNose",
     original_mask = cms.InputTag("hgcalLayerClustersHFNose","InitialLayerClustersMask"),
     filtered_mask = cms.InputTag("filteredLayerClustersHFNoseTrk","Trkn"),
     seeding_regions = "ticlSeedingTrkHFNose",
