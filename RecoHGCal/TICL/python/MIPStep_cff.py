@@ -1,3 +1,4 @@
+
 import FWCore.ParameterSet.Config as cms
 
 from RecoHGCal.TICL.TICLSeedingRegions_cff import ticlSeedingGlobal, ticlSeedingGlobalHFNose
@@ -55,7 +56,8 @@ ticlTrackstersHFNoseMIP = ticlTrackstersMIP.clone(
     filtered_mask = "filteredLayerClustersHFNoseMIP:MIPn",
     seeding_regions = "ticlSeedingGlobalHFNose",
     time_layerclusters = "hgcalLayerClustersHFNose:timeLayerCluster",
-    min_layers_per_trackster = 6
+    min_layers_per_trackster = 6,
+    itername = "MIPn"
 )
 
 ticlHFNoseMIPStepTask = cms.Task(ticlSeedingGlobalHFNose

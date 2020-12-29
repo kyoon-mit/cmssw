@@ -68,6 +68,7 @@ ticlTrackstersHFNoseTrkEM = ticlTrackstersTrkEM.clone(
     filtered_mask = cms.InputTag("filteredLayerClustersHFNoseTrkEM","Trkn"),
     seeding_regions = "ticlSeedingTrkHFNose",
     time_layerclusters = cms.InputTag("hgcalLayerClustersHFNose","timeLayerCluster"),
+    min_layers_per_trackster = 6,
     itername = "TrkEMn"
 )
 

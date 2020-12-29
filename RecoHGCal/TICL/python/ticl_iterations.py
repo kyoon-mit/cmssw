@@ -222,4 +222,3 @@ def TICL_iterations(process):
   process.schedule = cms.Schedule(process.raw2digi_step,process.FEVTDEBUGHLToutput_step)
   process.schedule.associate(process.TICL_Task)
   return process
-
