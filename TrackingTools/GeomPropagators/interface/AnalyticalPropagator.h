@@ -27,7 +27,7 @@ public:
                        bool isOld = true)
       : Propagator(dir),
         theMaxDPhi2(maxDPhi * maxDPhi),
-        theMaxDBzRatio(0.5),
+        theMaxDBzRatio(0.999),
         theField(field),
         isOldPropagationType(isOld) {}
 

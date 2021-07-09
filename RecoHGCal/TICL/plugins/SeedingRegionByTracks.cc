@@ -1,3 +1,5 @@
+#include <iostream>
+
 // Author: Arabella Martelli, Felice Pantaleo, Marco Rovere
 // arabella.martelli@cern.ch, felice.pantaleo@cern.ch, marco.rovere@cern.ch
 // Date: 06/2019
@@ -49,6 +51,7 @@ void SeedingRegionByTracks::makeRegions(const edm::Event &ev,
   const Propagator &prop = (*propagator_);
 
   int nTracks = tracks_h->size();
+
   for (int i = 0; i < nTracks; ++i) {
     const reco::Track &tk = (*tracks_h)[i];
     if (!cutTk_((tk))) {
@@ -57,11 +60,87 @@ void SeedingRegionByTracks::makeRegions(const edm::Event &ev,
 
     FreeTrajectoryState fts = trajectoryStateTransform::outerFreeState((tk), bFieldProd);
     int iSide = int(tk.eta() > 0);
-    TrajectoryStateOnSurface tsos = prop.propagate(fts, firstDisk_[iSide]->surface());
+    TrajectoryStateOnSurface tsos;
+    
+    if (detector_ != "HFNose") {
+      tsos = prop.propagate(fts, firstDisk_[iSide]->surface());
+    } else {
+      std::cout << "TEPX --> HFNose propagator begins w/ " << propName_ << std::endl;
+
+      if (propName_ == "AnalyticalPropagator") {
+        // make sure to check theMaxRelativeChangeInBz variable in AnalyticalPropagator.cc
+	// todo: implement steps
+      }
+
+      tsos = prop.propagate(fts, firstDisk_[iSide]->surface());
+
+      std::cout << "tsos valid (bool): " << tsos.isValid() << std::endl;
+      std::cout << "---- ends ----" << std::endl;
+    }
+
+    /*
+    auto p0 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,0));
+    auto p1 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,100));
+    auto p2 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,200));
+    auto p3 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,300));
+    auto p4 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,400));
+    auto p5 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,500));
+    auto p6 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,600));
+    auto p7 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,700));
+    auto p8 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,800));
+    auto p9 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,900));
+    auto p10 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,1000));
+    auto p11 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,1100));
+    auto p12 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,1200));
+    auto p13 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,-100));
+    auto p14 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,-200));
+    auto p15 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,-300));
+    auto p16 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,-400));
+    auto p17 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,-500));
+    auto p18 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,-600));
+    auto p19 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,-700));
+    auto p20 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,-800));
+    auto p21 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,-900));
+    auto p22 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,-1000));
+    auto p23 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,-1100));
+    auto p24 = GlobalPoint(GlobalPoint::Polar(0.0603764,0,-1200));
+
+    std::cout << "(theta,phi) = (Polar(0.0603764,0)" <<  std::endl;
+    std::cout << "check eta, z: " << p10.eta() << " " << p10.z() << std::endl;
+    std::cout << "p0: " << p0 << std::endl;
+
+    std::cout << "r = 0: " << bFieldProd->inTesla(p0).z() << std::endl;
+    std::cout << "r = 100: " << bFieldProd->inTesla(p1).z() << std::endl;
+    std::cout << "r = 200: " << bFieldProd->inTesla(p2).z() << std::endl;
+    std::cout << "r = 300: " << bFieldProd->inTesla(p3).z() << std::endl;
+    std::cout << "r = 400: " << bFieldProd->inTesla(p4).z() << std::endl;
+    std::cout << "r = 500: " << bFieldProd->inTesla(p5).z() << std::endl;
+    std::cout << "r = 600: " << bFieldProd->inTesla(p6).z() << std::endl;
+    std::cout << "r = 700: " << bFieldProd->inTesla(p7).z() << std::endl;
+    std::cout << "r = 800: " << bFieldProd->inTesla(p8).z() << std::endl;
+    std::cout << "r = 900: " << bFieldProd->inTesla(p9).z() << std::endl;
+    std::cout << "r = 1000: " << bFieldProd->inTesla(p10).z() << std::endl;
+    std::cout << "r = 1100: " << bFieldProd->inTesla(p11).z() << std::endl;
+    std::cout << "r = 1200: " << bFieldProd->inTesla(p12).z() << std::endl;
+    std::cout << "r = -100: " << bFieldProd->inTesla(p13).z() << std::endl;
+    std::cout << "r = -200: " << bFieldProd->inTesla(p14).z() << std::endl;
+    std::cout << "r = -300: " << bFieldProd->inTesla(p15).z() << std::endl;
+    std::cout << "r = -400: " << bFieldProd->inTesla(p16).z() << std::endl;
+    std::cout << "r = -500: " << bFieldProd->inTesla(p17).z() << std::endl;
+    std::cout << "r = -600: " << bFieldProd->inTesla(p18).z() << std::endl;
+    std::cout << "r = -700: " << bFieldProd->inTesla(p19).z() << std::endl;
+    std::cout << "r = -800: " << bFieldProd->inTesla(p20).z() << std::endl;
+    std::cout << "r = -900: " << bFieldProd->inTesla(p21).z() << std::endl;
+    std::cout << "r = -1000: " << bFieldProd->inTesla(p22).z() << std::endl;
+    std::cout << "r = -1100: " << bFieldProd->inTesla(p23).z() << std::endl;
+    std::cout << "r = -1200: " << bFieldProd->inTesla(p24).z() << std::endl;
+    */
+
     if (tsos.isValid()) {
       result.emplace_back(tsos.globalPosition(), tsos.globalMomentum(), iSide, i, trkId);
     }
   }
+
   // sorting seeding region by descending momentum
   std::sort(result.begin(), result.end(), [](const TICLSeedingRegion &a, const TICLSeedingRegion &b) {
     return a.directionAtOrigin.perp2() > b.directionAtOrigin.perp2();
