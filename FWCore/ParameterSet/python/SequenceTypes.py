@@ -178,8 +178,8 @@ class _SequenceCollection(_Sequenceable):
             returnValue += '&'+m.dumpSequenceConfig()
         return returnValue
 
-    def directDependencies(self):
-        return findDirectDependencies(self, self._collection)
+    def directDependencies(self,sortByType=True):
+        return findDirectDependencies(self, self._collection,sortByType=sortByType)
 
     def visitNode(self,visitor):
         for m in self._collection:
@@ -210,7 +210,7 @@ class _SequenceCollection(_Sequenceable):
         return didReplace
 
 
-def findDirectDependencies(element, collection):
+def findDirectDependencies(element, collection,sortByType=True):
     dependencies = []
     for item in collection:
         # skip null items
@@ -223,23 +223,23 @@ def findDirectDependencies(element, collection):
         # cms.ignore(module), ~(module)
         elif isinstance(item, (_SequenceIgnore, _SequenceNegation)):
             if isinstance(item._operand, _SequenceCollection):
-                dependencies += item.directDependencies()
+                dependencies += item.directDependencies(sortByType)
                 continue
             t = 'modules'
         # _SequenceCollection
         elif isinstance(item, _SequenceCollection):
-            dependencies += item.directDependencies()
+            dependencies += item.directDependencies(sortByType)
             continue
         # cms.Sequence
         elif isinstance(item, Sequence):
             if not item.hasLabel_():
-                dependencies += item.directDependencies()
+                dependencies += item.directDependencies(sortByType)
                 continue
             t = 'sequences'
         # cms.Task
         elif isinstance(item, Task):
             if not item.hasLabel_():
-                dependencies += item.directDependencies()
+                dependencies += item.directDependencies(sortByType)
                 continue
             t = 'tasks'
         # SequencePlaceholder and TaskPlaceholder do not add an explicit dependency
@@ -250,7 +250,10 @@ def findDirectDependencies(element, collection):
             sys.stderr.write("Warning: unsupported element '%s' in %s '%s'\n" % (str(item), type(element).__name__, element.label_()))
             continue
         dependencies.append((t, item.label_()))
-    return dependencies
+    if sortByType:
+        return sorted(set(dependencies), key = lambda t_item: (t_item[0].lower(), t_item[1].lower().replace('_cfi', '')))
+    else:
+        return dependencies
 
 
 class _ModuleSequenceType(_ConfigureComponent, _Labelable):
@@ -369,13 +372,13 @@ class _ModuleSequenceType(_ConfigureComponent, _Labelable):
            s = str(self._seq)
         return "cms."+type(self).__name__+'('+s+')\n'
 
-    def directDependencies(self):
+    def directDependencies(self,sortByType=True):
         """Returns the list of modules and other entities that are directly used"""
         result = []
         if self._seq:
-          result += self._seq.directDependencies()
+          result += self._seq.directDependencies(sortByType=sortByType)
         if self._tasks:
-          result += findDirectDependencies(self, self._tasks)
+          result += findDirectDependencies(self, self._tasks,sortByType=sortByType)
         return result
 
     def moduleNames(self):
@@ -568,8 +571,8 @@ class _UnarySequenceOperator(_BooleanLogicSequenceable):
         self._operand.visitNode(visitor)
     def decoration(self):
         self._operand.decoration()
-    def directDependencies(self):
-        return self._operand.directDependencies()
+    def directDependencies(self,sortByType=True):
+        return self._operand.directDependencies(sortByType=sortByType)
     def label_(self):
         return self._operand.label_()
 
@@ -1474,8 +1477,8 @@ class Task(_ConfigureComponent, _Labelable) :
             return "cms.Task(*[" + s + "])"
         return "cms.Task(" + s + ")"
 
-    def directDependencies(self):
-        return findDirectDependencies(self, self._collection)
+    def directDependencies(self,sortByType=True):
+        return findDirectDependencies(self, self._collection,sortByType=sortByType)
 
     def _isTaskComponent(self):
         return True
@@ -1537,6 +1540,11 @@ class Task(_ConfigureComponent, _Labelable) :
         v = _CopyAndExcludeSequenceVisitor(listOfModulesToExclude)
         self.visit(v)
         return Task(*v.result(self))
+    def copyAndAdd(self, *modulesToAdd):
+        """Returns a copy of the Task adding modules/tasks"""
+        t = self.copy()
+        t.add(*modulesToAdd)
+        return t
     def expandAndClone(self):
         # Name of this function is not very good. It makes a shallow copy with all
         # the subTasks flattened out (removed), but keeping all the
@@ -2460,6 +2468,27 @@ if __name__=="__main__":
             self.assertTrue(id(t1Contents[0]) == id(t2Contents[0]))
             self.assertTrue(id(t1Contents[1]) == id(t2Contents[1]))
             self.assertTrue(id(t1._collection) != id(t2._collection))
+        def testCopyAndAdd(self):
+            a = DummyModule("a")
+            b = DummyModule("b")
+            c = DummyModule("c")
+            d = DummyModule("d")
+            e = DummyModule("e")
+            t1 = Task(a, b, c)
+            self.assertEqual(t1.dumpPython(), "cms.Task(process.a, process.b, process.c)\n")
+            t2 = t1.copyAndAdd(d, e)
+            self.assertEqual(t1.dumpPython(), "cms.Task(process.a, process.b, process.c)\n")
+            self.assertEqual(t2.dumpPython(), "cms.Task(process.a, process.b, process.c, process.d, process.e)\n")
+            t3 = t2.copyAndExclude([b])
+            self.assertEqual(t1.dumpPython(), "cms.Task(process.a, process.b, process.c)\n")
+            self.assertEqual(t2.dumpPython(), "cms.Task(process.a, process.b, process.c, process.d, process.e)\n")
+            self.assertEqual(t3.dumpPython(), "cms.Task(process.a, process.c, process.d, process.e)\n")
+            t4 = t1.copyAndExclude([b]).copyAndAdd(d)
+            self.assertEqual(t4.dumpPython(), "cms.Task(process.a, process.c, process.d)\n")
+            t5 = t2.copyAndExclude([b]).copyAndAdd(d)
+            self.assertEqual(t5.dumpPython(), "cms.Task(process.a, process.c, process.d, process.e)\n")
+            t6 = t4.copyAndAdd(Task(b))
+            self.assertEqual(t6.dumpPython(), "cms.Task(process.a, process.b, process.c, process.d)\n")
         def testInsertInto(self):
             from FWCore.ParameterSet.Types import vstring
             class TestPSet(object):

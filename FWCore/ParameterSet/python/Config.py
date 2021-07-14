@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 ### command line options helper
 from __future__ import print_function
@@ -215,9 +215,9 @@ class Process(object):
         return untracked.PSet(numberOfThreads = untracked.uint32(1),
                               numberOfStreams = untracked.uint32(0),
                               numberOfConcurrentRuns = untracked.uint32(1),
-                              numberOfConcurrentLuminosityBlocks = untracked.uint32(1),
+                              numberOfConcurrentLuminosityBlocks = untracked.uint32(0),
                               eventSetup = untracked.PSet(
-                                  numberOfConcurrentIOVs = untracked.uint32(1),
+                                  numberOfConcurrentIOVs = untracked.uint32(0),
                                   forceNumberOfConcurrentIOVs = untracked.PSet(
                                       allowAnyLabel_ = required.untracked.uint32
                                   )
@@ -234,6 +234,7 @@ class Process(object):
                               FailPath = untracked.vstring(),
                               IgnoreCompletely = untracked.vstring(),
                               canDeleteEarly = untracked.vstring(),
+                              dumpOptions = untracked.bool(False),
                               allowUnscheduled = obsolete.untracked.bool,
                               emptyRunLumiMode = obsolete.untracked.string,
                               makeTriggerResults = obsolete.untracked.bool
@@ -1035,7 +1036,10 @@ class Process(object):
                 sub = options.targetDirectory + '/' + sub
             files[sub + '/__init__.py'] = ''
 
-        for (name, (subfolder, code)) in six.iteritems(parts):
+        # case insensitive sort by subfolder and module name
+        parts = sorted(parts.items(), key = lambda nsc: (nsc[1][0].lower() if nsc[1][0] else '', nsc[0].lower()))
+
+        for (name, (subfolder, code)) in parts:
             filename = name + '_cfi'
             if options.useSubdirectories and subfolder:
                 filename = subfolder + '/' + filename
@@ -1046,7 +1050,7 @@ class Process(object):
 
         if self.schedule_() is not None:
             options.isCfg = True
-            result += 'process.schedule = ' + self.schedule.dumpPython(options)
+            result += '\nprocess.schedule = ' + self.schedule.dumpPython(options)
 
         imports = specialImportRegistry.getSpecialImports()
         if len(imports) > 0:
@@ -2012,17 +2016,18 @@ process.options = cms.untracked.PSet(
     allowUnscheduled = cms.obsolete.untracked.bool,
     canDeleteEarly = cms.untracked.vstring(),
     deleteNonConsumedUnscheduledModules = cms.untracked.bool(True),
+    dumpOptions = cms.untracked.bool(False),
     emptyRunLumiMode = cms.obsolete.untracked.string,
     eventSetup = cms.untracked.PSet(
         forceNumberOfConcurrentIOVs = cms.untracked.PSet(
             allowAnyLabel_=cms.required.untracked.uint32
         ),
-        numberOfConcurrentIOVs = cms.untracked.uint32(1)
+        numberOfConcurrentIOVs = cms.untracked.uint32(0)
     ),
     fileMode = cms.untracked.string('FULLMERGE'),
     forceEventSetupCacheClearOnNewRun = cms.untracked.bool(False),
     makeTriggerResults = cms.obsolete.untracked.bool,
-    numberOfConcurrentLuminosityBlocks = cms.untracked.uint32(1),
+    numberOfConcurrentLuminosityBlocks = cms.untracked.uint32(0),
     numberOfConcurrentRuns = cms.untracked.uint32(1),
     numberOfStreams = cms.untracked.uint32(0),
     numberOfThreads = cms.untracked.uint32(1),

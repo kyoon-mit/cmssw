@@ -38,7 +38,6 @@ HGCSD::HGCSD(const std::string& name,
              edm::ParameterSet const& p,
              const SimTrackManager* manager)
     : CaloSD(name,
-             es,
              clg,
              p,
              manager,
@@ -190,8 +189,10 @@ uint32_t HGCSD::setDetUnitId(const G4Step* aStep) {
     int det, z, lay, wafer, type, ic;
     HGCalTestNumbering::unpackHexagonIndex(id, det, z, lay, wafer, type, ic);
 #ifdef EDM_ML_DEBUG
-    edm::LogVerbatim("HGCSim") << "ID " << std::hex << id << std::dec << " Decode " << det << ":" << z << ":" << lay
-                               << ":" << wafer << ":" << type << ":" << ic;
+    edm::LogVerbatim("HGCSim") << "ID " << std::hex << id << std::dec << " Input " << subdet << ":" << layer << ":"
+                               << module << ":" << cell << ":" << iz << localpos.x() << ":" << localpos.y()
+                               << " Decode " << det << ":" << z << ":" << lay << ":" << wafer << ":" << type << ":"
+                               << ic;
 #endif
     if (mouseBite_->exclude(hitPoint, z, wafer, 0))
       id = 0;

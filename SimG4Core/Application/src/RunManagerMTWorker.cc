@@ -16,9 +16,7 @@
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
-#include "DataFormats/Common/interface/Handle.h"
 #include "FWCore/Framework/interface/ConsumesCollector.h"
-#include "FWCore/Concurrency/interface/FunctorTask.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/Utilities/interface/thread_safety_macros.h"
 
@@ -29,25 +27,20 @@
 #include "SimG4Core/Notification/interface/CMSSteppingVerbose.h"
 #include "SimG4Core/Watcher/interface/SimWatcherFactory.h"
 
-#include "FWCore/Framework/interface/EventSetup.h"
-#include "FWCore/Framework/interface/ESHandle.h"
-#include "FWCore/Framework/interface/ESTransientHandle.h"
-#include "Geometry/Records/interface/IdealGeometryRecord.h"
-
 #include "SimG4Core/Geometry/interface/DDDWorld.h"
 #include "SimG4Core/MagneticField/interface/FieldBuilder.h"
 #include "SimG4Core/MagneticField/interface/CMSFieldManager.h"
 
-#include "MagneticField/Engine/interface/MagneticField.h"
-#include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
-
 #include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
+#include "DataFormats/GeometryVector/interface/GlobalPoint.h"
 
 #include "SimG4Core/Physics/interface/PhysicsList.h"
 
 #include "SimG4Core/SensitiveDetector/interface/AttachSD.h"
 #include "SimG4Core/SensitiveDetector/interface/SensitiveTkDetector.h"
 #include "SimG4Core/SensitiveDetector/interface/SensitiveCaloDetector.h"
+#include "SimG4Core/SensitiveDetector/interface/SensitiveDetectorMakerBase.h"
+#include "SimG4Core/SensitiveDetector/interface/sensitiveDetectorMakers.h"
 
 #include "G4Timer.hh"
 #include "G4Event.hh"
@@ -68,6 +61,7 @@
 #include <thread>
 #include <sstream>
 #include <vector>
+#include "tbb/task_arena.h"
 
 static std::once_flag applyOnce;
 thread_local bool RunManagerMTWorker::dumpMF = false;
@@ -84,13 +78,13 @@ namespace {
 
   void createWatchers(const edm::ParameterSet& iP,
                       SimActivityRegistry* iReg,
-                      std::vector<std::shared_ptr<SimWatcher> >& oWatchers,
-                      std::vector<std::shared_ptr<SimProducer> >& oProds) {
+                      std::vector<std::shared_ptr<SimWatcher>>& oWatchers,
+                      std::vector<std::shared_ptr<SimProducer>>& oProds) {
     if (!iP.exists("Watchers")) {
       return;
     }
 
-    std::vector<edm::ParameterSet> watchers = iP.getParameter<std::vector<edm::ParameterSet> >("Watchers");
+    std::vector<edm::ParameterSet> watchers = iP.getParameter<std::vector<edm::ParameterSet>>("Watchers");
 
     for (auto& watcher : watchers) {
       std::unique_ptr<SimWatcherMakerBase> maker(
@@ -122,8 +116,8 @@ struct RunManagerMTWorker::TLSData {
   std::unique_ptr<SimTrackManager> trackManager;
   std::vector<SensitiveTkDetector*> sensTkDets;
   std::vector<SensitiveCaloDetector*> sensCaloDets;
-  std::vector<std::shared_ptr<SimWatcher> > watchers;
-  std::vector<std::shared_ptr<SimProducer> > producers;
+  std::vector<std::shared_ptr<SimWatcher>> watchers;
+  std::vector<std::shared_ptr<SimProducer>> producers;
   //G4Run can only be deleted if there is a G4RunManager
   // on the thread where the G4Run is being deleted,
   // else it causes a segmentation fault
@@ -165,14 +159,25 @@ RunManagerMTWorker::RunManagerMTWorker(const edm::ParameterSet& iConfig, edm::Co
       m_p(iConfig),
       m_simEvent(nullptr),
       m_sVerbose(nullptr) {
-  std::vector<edm::ParameterSet> watchers = iConfig.getParameter<std::vector<edm::ParameterSet> >("Watchers");
+  std::vector<std::string> onlySDs = iConfig.getParameter<std::vector<std::string>>("OnlySDs");
+  m_sdMakers = sim::sensitiveDetectorMakers(m_p, iC, onlySDs);
+  std::vector<edm::ParameterSet> watchers = iConfig.getParameter<std::vector<edm::ParameterSet>>("Watchers");
   m_hasWatchers = !watchers.empty();
   initializeTLS();
   int thisID = getThreadIndex();
   if (m_LHCTransport) {
     m_LHCToken = iC.consumes<edm::HepMCProduct>(edm::InputTag("LHCTransport"));
   }
+  if (m_pUseMagneticField) {
+    m_MagField = iC.esConsumes<MagneticField, IdealMagneticFieldRecord, edm::Transition::BeginRun>();
+  }
   edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker is constructed for the thread " << thisID;
+  unsigned int k = 0;
+  for (std::unordered_map<std::string, std::unique_ptr<SensitiveDetectorMakerBase>>::const_iterator itr =
+           m_sdMakers.begin();
+       itr != m_sdMakers.end();
+       ++itr, ++k)
+    edm::LogVerbatim("SimG4CoreApplication") << "SD[" << k << "] " << itr->first;
 }
 
 RunManagerMTWorker::~RunManagerMTWorker() {
@@ -196,8 +201,10 @@ void RunManagerMTWorker::resetTLS() {
   if (active_tlsdata != 0 and not tls_shutdown_timeout) {
     ++n_tls_shutdown_task;
     //need to run tasks on each thread which has set the tls
-    auto task = edm::make_functor_task(tbb::task::allocate_root(), []() { resetTLS(); });
-    tbb::task::enqueue(*task);
+    {
+      tbb::task_arena arena(tbb::task_arena::attach{});
+      arena.enqueue([]() { RunManagerMTWorker::resetTLS(); });
+    }
     timespec s;
     s.tv_sec = 0;
     s.tv_nsec = 10000;
@@ -213,6 +220,12 @@ void RunManagerMTWorker::resetTLS() {
     }
   }
   --n_tls_shutdown_task;
+}
+
+void RunManagerMTWorker::beginRun(edm::EventSetup const& es) {
+  for (auto& maker : m_sdMakers) {
+    maker.second->beginRun(es);
+  }
 }
 
 void RunManagerMTWorker::endRun() {
@@ -297,12 +310,11 @@ void RunManagerMTWorker::initializeG4(RunManagerMT* runManagerMaster, const edm:
 
   // setup the magnetic field
   if (m_pUseMagneticField) {
-    const GlobalPoint g(0., 0., 0.);
+    const GlobalPoint g(0.f, 0.f, 0.f);
 
-    edm::ESHandle<MagneticField> pMF;
-    es.get<IdealMagneticFieldRecord>().get(pMF);
+    m_pMagField = &es.getData(m_MagField);
+    sim::FieldBuilder fieldBuilder(m_pMagField, m_pField);
 
-    sim::FieldBuilder fieldBuilder(pMF.product(), m_pField);
     CMSFieldManager* fieldManager = new CMSFieldManager();
     tM->SetFieldManager(fieldManager);
     fieldBuilder.build(fieldManager, tM->GetPropagatorInField());
@@ -318,9 +330,8 @@ void RunManagerMTWorker::initializeG4(RunManagerMT* runManagerMaster, const edm:
   }
 
   // attach sensitive detector
-  AttachSD attach;
-  auto sensDets =
-      attach.create(es, runManagerMaster->catalog(), m_p, m_tls->trackManager.get(), *(m_tls->registry.get()));
+  auto sensDets = sim::attachSD(
+      m_sdMakers, es, runManagerMaster->catalog(), m_p, m_tls->trackManager.get(), *(m_tls->registry.get()));
 
   m_tls->sensTkDets.swap(sensDets.first);
   m_tls->sensCaloDets.swap(sensDets.second);
@@ -360,9 +371,9 @@ void RunManagerMTWorker::initializeG4(RunManagerMT* runManagerMaster, const edm:
 
   G4int sv = m_p.getUntrackedParameter<int>("SteppingVerbosity", 0);
   G4double elim = m_p.getUntrackedParameter<double>("StepVerboseThreshold", 0.1) * CLHEP::GeV;
-  std::vector<int> ve = m_p.getUntrackedParameter<std::vector<int> >("VerboseEvents");
-  std::vector<int> vn = m_p.getUntrackedParameter<std::vector<int> >("VertexNumber");
-  std::vector<int> vt = m_p.getUntrackedParameter<std::vector<int> >("VerboseTracks");
+  std::vector<int> ve = m_p.getUntrackedParameter<std::vector<int>>("VerboseEvents");
+  std::vector<int> vn = m_p.getUntrackedParameter<std::vector<int>>("VertexNumber");
+  std::vector<int> vt = m_p.getUntrackedParameter<std::vector<int>>("VerboseTracks");
 
   if (sv > 0) {
     m_sVerbose = std::make_unique<CMSSteppingVerbose>(sv, elim, ve, vn, vt);
@@ -434,7 +445,7 @@ std::vector<SensitiveCaloDetector*>& RunManagerMTWorker::sensCaloDetectors() {
   initializeTLS();
   return m_tls->sensCaloDets;
 }
-std::vector<std::shared_ptr<SimProducer> >& RunManagerMTWorker::producers() {
+std::vector<std::shared_ptr<SimProducer>>& RunManagerMTWorker::producers() {
   initializeTLS();
   return m_tls->producers;
 }

@@ -37,6 +37,11 @@ from DQM.L1TMonitor.L1TdeGCT_cfi import *
 from DQM.L1TMonitor.L1TdeStage1Layer2_cfi import *
 
 from DQM.L1TMonitor.L1TdeRCT_cfi import *
+#Check if perLSsaving is enabled to mask MEs vs LS
+from DQMServices.Core.DQMStore_cfi import DQMStore
+if(DQMStore.saveByLumi):
+    l1TdeRCT.perLSsaving=True
+
 l1TdeRCTRun1 = l1TdeRCT.clone()
 l1TdeRCT.rctSourceData = 'caloStage1Digis'
 #l1TdeRCT.gctSourceData = 'caloStage1Digis'
@@ -67,7 +72,7 @@ from L1Trigger.L1TCalorimeter.caloStage1LegacyFormatDigis_cfi import *
 
 ############################################################
 
-# GMT unpack from Fed813 in legacy stage1 parallel running                                                               
+# GMT unpack from Fed813 in legacy stage1 parallel running
 from EventFilter.L1GlobalTriggerRawToDigi.l1GtUnpack_cfi import *
 l1GtUnpack.DaqGtInputTag = 'rawDataCollector'
 
@@ -78,11 +83,11 @@ l1TdeRCTSeq = cms.Sequence(
                     )
 
 l1ExpertDataVsEmulator = cms.Sequence(
-                                l1TdeGCT + 
-                                l1TdeCSCTF + 
-                                l1GtHwValidation + 
-                                l1TdeRCTRun1
-                                )
+    l1TdeGCT +
+    l1TdeCSCTF +
+    l1GtHwValidation +
+    l1TdeRCTRun1
+)
 
 
 l1EmulatorMonitorTask = cms.Task(
@@ -116,7 +121,7 @@ l1ExpertDataVsEmulatorStage1 = cms.Sequence(
 
 l1EmulatorMonitorStage1 = cms.Sequence(
     #caloStage1Digis*
-    #caloStage1LegacyFormatDigis*    
+    #caloStage1LegacyFormatDigis*
     l1demonstage1+
     l1ExpertDataVsEmulatorStage1
     )

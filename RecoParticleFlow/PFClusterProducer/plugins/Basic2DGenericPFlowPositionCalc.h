@@ -4,16 +4,19 @@
 #include "RecoParticleFlow/PFClusterProducer/interface/PFCPositionCalculatorBase.h"
 #include "DataFormats/ParticleFlowReco/interface/PFRecHitFwd.h"
 #include "DataFormats/ParticleFlowReco/interface/PFRecHit.h"
+#include "FWCore/Framework/interface/ConsumesCollector.h"
 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
 #include "RecoParticleFlow/PFClusterProducer/interface/CaloRecHitResolutionProvider.h"
+#include <memory>
+
 #include <tuple>
 
 class Basic2DGenericPFlowPositionCalc : public PFCPositionCalculatorBase {
 public:
-  Basic2DGenericPFlowPositionCalc(const edm::ParameterSet& conf)
-      : PFCPositionCalculatorBase(conf),
+  Basic2DGenericPFlowPositionCalc(const edm::ParameterSet& conf, edm::ConsumesCollector& cc)
+      : PFCPositionCalculatorBase(conf, cc),
         _posCalcNCrystals(conf.getParameter<int>("posCalcNCrystals")),
         _minAllowedNorm(conf.getParameter<double>("minAllowedNormalization")) {
     std::vector<int> detectorEnum;
@@ -64,12 +67,12 @@ public:
     _timeResolutionCalcBarrel.reset(nullptr);
     if (conf.exists("timeResolutionCalcBarrel")) {
       const edm::ParameterSet& timeResConf = conf.getParameterSet("timeResolutionCalcBarrel");
-      _timeResolutionCalcBarrel.reset(new CaloRecHitResolutionProvider(timeResConf));
+      _timeResolutionCalcBarrel = std::make_unique<CaloRecHitResolutionProvider>(timeResConf);
     }
     _timeResolutionCalcEndcap.reset(nullptr);
     if (conf.exists("timeResolutionCalcEndcap")) {
       const edm::ParameterSet& timeResConf = conf.getParameterSet("timeResolutionCalcEndcap");
-      _timeResolutionCalcEndcap.reset(new CaloRecHitResolutionProvider(timeResConf));
+      _timeResolutionCalcEndcap = std::make_unique<CaloRecHitResolutionProvider>(timeResConf);
     }
 
     switch (_posCalcNCrystals) {

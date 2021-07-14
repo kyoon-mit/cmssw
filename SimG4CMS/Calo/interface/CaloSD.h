@@ -20,6 +20,7 @@
 #include "SimG4Core/SensitiveDetector/interface/SensitiveCaloDetector.h"
 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include "FWCore/ParameterSet/interface/ParameterSetfwd.h"
 
 #include "G4VPhysicalVolume.hh"
 #include "G4Track.hh"
@@ -44,7 +45,6 @@ class CaloSD : public SensitiveCaloDetector,
                public Observer<const EndOfEvent*> {
 public:
   CaloSD(const std::string& aSDname,
-         const edm::EventSetup& es,
          const SensitiveDetectorCatalog& clg,
          edm::ParameterSet const& p,
          const SimTrackManager*,
@@ -84,6 +84,9 @@ protected:
   void resetForNewPrimary(const G4Step*);
   double getAttenuation(const G4Step* aStep, double birk1, double birk2, double birk3) const;
 
+  static std::string printableDecayChain(const std::vector<unsigned int>& decayChain);
+  void hitBookkeepingFineCalo(const G4Step* step, const G4Track* currentTrack, CaloG4Hit* hit);
+
   void update(const BeginOfRun*) override;
   void update(const BeginOfEvent*) override;
   void update(const BeginOfTrack* trk) override;
@@ -114,6 +117,7 @@ protected:
   }
 
   inline void setNumberCheckedHits(int val) { nCheckedHits = val; }
+  void printDetectorLevels(const G4VTouchable*) const;
 
 private:
   void storeHit(CaloG4Hit*);
@@ -174,7 +178,8 @@ private:
   float timeSlice;
   double eminHitD;
   double correctT;
-  bool useFineCaloID_;
+  bool doFineCalo_;
+  double eMinFine_;
 
   std::map<CaloHitID, CaloG4Hit*> hitMap;
   std::map<int, TrackWithHistory*> tkMap;

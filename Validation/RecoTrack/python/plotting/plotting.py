@@ -310,14 +310,16 @@ def _calculateRatios(histos, ratioUncertainty=False):
             return (self._gr.GetY()[bin], self._gr.GetErrorY(bin), self._gr.GetErrorY(bin))
 
     def wrap(o):
-        if isinstance(o, ROOT.TH1):
+        if isinstance(o, ROOT.TH1) and not isinstance(o, ROOT.TH2):
             return WrapTH1(o, ratioUncertainty)
         elif isinstance(o, ROOT.TGraph):
             return WrapTGraph(o, ratioUncertainty)
         elif isinstance(o, ROOT.TGraph2D):
             return WrapTGraph2D(o, ratioUncertainty)
 
-    wrappers = [wrap(h) for h in histos]
+    wrappers = [wrap(h) for h in histos if wrap(h) is not None]
+    if len(wrappers) < 1:
+        return []
     ref = wrappers[0]
 
     wrappers_bins = []
@@ -1019,7 +1021,7 @@ class AggregateBins:
                 # the iteration timing plots), so let's test them all
                 for lab in labels:
                     if lab in values:
-                        ivalue = values.keys().index(lab)
+                        ivalue = list(values.keys()).index(lab)
                         break
             binIndexOrder.append( (ivalue, i) )
 
@@ -1180,8 +1182,8 @@ class ROC:
 
 
 # Plot styles
-_plotStylesColor = [4, 2, ROOT.kBlack, ROOT.kOrange+7, ROOT.kMagenta-3]
-_plotStylesMarker = [21, 20, 22, 34, 33]
+_plotStylesColor = [4, 2, ROOT.kBlack, ROOT.kOrange+7, ROOT.kMagenta-3, ROOT.kGreen+2]
+_plotStylesMarker = [21, 20, 22, 34, 33, 23]
 
 def _drawFrame(pad, bounds, zmax=None, xbinlabels=None, xbinlabelsize=None, xbinlabeloption=None, ybinlabels=None, suffix=""):
     """Function to draw a frame
@@ -1932,9 +1934,9 @@ class Plot:
             return th1
 
         if self._fallback is not None:
-            self._histograms = map(_modifyHisto, self._histograms, profileX)
+            self._histograms = list(map(_modifyHisto, self._histograms, profileX))
         else:
-            self._histograms = map(lambda h: _modifyHisto(h, self._profileX), self._histograms)
+            self._histograms =list(map(lambda h: _modifyHisto(h, self._profileX), self._histograms))
         if requireAllHistograms and None in self._histograms:
             self._histograms = [None]*len(self._histograms)
 
@@ -1965,10 +1967,11 @@ class Plot:
             if self._fit:
                 st.SetOptFit(0o010)
                 st.SetOptStat(1001)
+            st.SetOptStat(1110)
             st.SetX1NDC(startingX)
             st.SetX2NDC(startingX+0.3)
             st.SetY1NDC(startingY+dy)
-            st.SetY2NDC(startingY+dy+0.15)
+            st.SetY2NDC(startingY+dy+0.12)
             st.SetTextColor(col)
 
         dy = 0.0
@@ -1977,7 +1980,7 @@ class Plot:
                 dy += self._statyadjust[i]
 
             _doStats(h, _plotStylesColor[i], dy)
-            dy -= 0.19
+            dy -= 0.16
 
     def _normalize(self):
         """Normalise histograms to unit area"""
@@ -2205,7 +2208,7 @@ class Plot:
             addl.Draw("same")
 
         # Draw ratios
-        if ratio and len(histos) > 0:
+        if ratio and len(self._ratios) > 0:
             frame._padRatio.cd()
             firstRatio = self._ratios[0].getRatio()
             if self._ratioUncertainty and firstRatio is not None:
@@ -2734,8 +2737,7 @@ class PlotterFolder:
                     if sf_translated is not None and not sf_translated in subfolders:
                         subfolders[sf_translated] = DQMSubFolder(sf, sf_translated)
 
-            self._dqmSubFolders = subfolders.values()
-            self._dqmSubFolders.sort(key=lambda sf: sf.subfolder)
+            self._dqmSubFolders = sorted(subfolders.values(), key=lambda sf: sf.subfolder)
 
         self._fallbackNames = fallbackNames
         self._fallbackDqmSubFolders = fallbackDqmSubFolders
@@ -2915,6 +2917,8 @@ class PlotterItem:
                                 subf.append(key.GetName())
                         subFolders.append(subf)
                     break
+                else:
+                    print("Did not find directory '%s' from file %s" % (pd, tfile.GetName()))
 
             if not isOpenFile:
                 tfile.Close()
